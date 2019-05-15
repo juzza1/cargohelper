@@ -9,13 +9,10 @@ import sys
 import tkinter as tk
 import webbrowser
 
-import appdirs
+from pkg_resources import resource_filename
 
-from defs.cargos import Cargos
-
-APPNAME = 'NewGRF Cargo Helper'
-APPAUTHOR = 'NewGRF'
-CONFIG_PATH = os.path.join(appdirs.user_data_dir(APPNAME, APPAUTHOR), 'config')
+import nch
+import nch.cargos
 
 FILL = tk.N + tk.S + tk.W + tk.E
 
@@ -28,7 +25,7 @@ def resource_path(rel_path):
 
 
 def save_config(data):
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(nch.CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, 'wb') as f:
         os.dump(data, f)
 
@@ -44,7 +41,7 @@ def load_config(data):
 
 class App(tk.Frame):
     def __init__(self, master=None):
-        self.cargos = Cargos(ignore_unknown_labels=True)
+        self.cargos = nch.cargos.Cargos(ignore_unknown_labels=True)
         self.element_mapping = {}
         self.max_cc_lb_height = len(self.cargos.classes)
 
@@ -142,8 +139,8 @@ class App(tk.Frame):
 
     def create_widgets(self):
         # Window title
-        self.top.title(APPNAME)
-        self.top.iconbitmap(resource_path('newgrf.ico'))
+        self.top.title(nch.APPNAME)
+        self.top.iconbitmap(resource_filename(__name__, 'newgrf.ico'))
         # Make main window stretchable
         self.top.rowconfigure(0, weight=1)
         self.top.columnconfigure(0, weight=1)
@@ -370,7 +367,3 @@ class App(tk.Frame):
 def main():
     app = App()
     app.mainloop()
-
-
-if __name__ == '__main__':
-    main()
