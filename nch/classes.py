@@ -132,6 +132,6 @@ all = [
 
 
 if __name__ == '__main__':
-    obj_str = lambda obj: '\n'.join(
-        [str(i) for i in sorted(obj.__dict__.items())])
+    def obj_str(obj):
+        return '\n'.join([str(i) for i in sorted(obj.__dict__.items())])
     print('\n\n'.join(obj_str(cc) for cc in all))

@@ -69,7 +69,7 @@ def main():
         with open(sys.argv[1], encoding='utf-8') as f:
             html_doc = f.read()
     else:
-        html_doc=None
+        html_doc = None
     lbs = fetch_labels(html_doc)
     for lb in lbs:
         print(lb.__dict__)

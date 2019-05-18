@@ -125,6 +125,7 @@ class App(tk.Frame):
     def movement_buttons(self, frame, add_spec, del_spec):
         """Button spec: ('text', source_listbox, target_listbox)"""
         fr = tk.Frame(frame)
+
         def add_button(spec, row, sticky):
             cmd = self.multi_command_factory([
                 self.button_command_factory(spec[1], spec[2]),
@@ -267,7 +268,7 @@ class App(tk.Frame):
         # If last element is empty, it wont get pasted to google sheets
         if row[-1] == '':
             row[-1] = ' '
-        
+
         f = io.StringIO()
         writer = csv.writer(f, delimiter='\t')
         writer.writerow(row)
