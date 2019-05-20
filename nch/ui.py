@@ -35,6 +35,8 @@ def load_config():
 
 class App(tk.Frame):
     def __init__(self, master=None):
+        self.focus_lb_selectcolor = tk.Listbox(None).cget('selectbackground')
+        self.unfocus_lb_selectcolor = 'Gray'
         self.init_cargos()
         self.max_cc_lb_height = len(self.cargos.classes)
         tk.Frame.__init__(self, master)
@@ -411,6 +413,10 @@ class App(tk.Frame):
 
             selector_func = selection_modes[selection_mode]
             selector_func()
+            for clb in clicked_listboxes:
+                clb.config(selectbackground=self.focus_lb_selectcolor)
+            for tlb in target_listboxes:
+                tlb.config(selectbackground=self.unfocus_lb_selectcolor)
 
         return update
 
