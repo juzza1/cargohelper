@@ -7,6 +7,7 @@ import os.path
 import pickle
 import sys
 import tkinter as tk
+from tkinter import ttk
 import webbrowser
 
 from pkg_resources import resource_filename
@@ -131,6 +132,17 @@ class App(tk.Frame):
         del_btn = add_button(del_spec, 1, tk.N)
         return fr, add_btn, del_btn
 
+    def selectors(self, frame, text):
+        fr = tk.Frame(frame)
+        label = tk.Label(fr, text=text)
+        label.grid(column=0, row=0)
+        option_values = ('ANY', 'ALL', 'NONE')
+        opts = ttk.Combobox(fr, values=option_values, width=7)
+        opts.grid(column=1, row=0)
+        opts.state(('!disabled', 'readonly'))
+        opts.set('ANY')
+        return fr, opts
+
     def create_widgets(self):
         # Window title
         self.top.title(nch.APPNAME)
@@ -138,7 +150,7 @@ class App(tk.Frame):
         # Make main window stretchable
         self.top.rowconfigure(0, weight=1)
         self.top.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
         self.columnconfigure(0, weight=1)
 
         # Menus
@@ -151,9 +163,14 @@ class App(tk.Frame):
         self.submenu.add_command(label='Refresh labels', command=refresh_cmd)
         self.submenu.add_command(label='Exit', command=self.quit)
 
+
         # Cargo labels
+        # Selection type
+        fr, self.cb_label = self.selectors(self, 'Select matching classes:')
+        fr.grid(column=0, row=0)
+        # Listboxes and buttons
         frame_labels = tk.Frame(self)
-        frame_labels.grid(column=0, row=0, rowspan=2, sticky=FILL)
+        frame_labels.grid(column=0, row=1, rowspan=2, sticky=FILL)
         fr, self.lb_label_allow = self.listbox(
             frame_labels, 'cargo_allow_refit')
         fr.grid(column=0, row=0, sticky=FILL)
@@ -181,8 +198,12 @@ class App(tk.Frame):
             self.lb_label_allow, self.lb_label_unset, self.lb_label_disallow]
 
         # Cargo classes
+        # Selection type
+        fr, self.cb_ccs = self.selectors(self, 'Select matching labels')
+        fr.grid(column=1, row=0)
+        # Listboxes and buttons
         frame_ccs = tk.Frame(self)
-        frame_ccs.grid(column=1, row=0, sticky=FILL)
+        frame_ccs.grid(column=1, row=1, sticky=FILL)
         fr, self.lb_cc_allow = self.listbox(
             frame_ccs, 'refittable_cargo_classes', width=27,
             height=self.max_cc_lb_height, scrollbar=False, stretchable=False)
@@ -210,19 +231,21 @@ class App(tk.Frame):
 
         self.all_listboxes = self.label_listboxes + self.cc_listboxes
 
-        # Bind actions to listboxes
+        # Bind actions to selectors and listboxes
         update_selected_ccs = self.update_listbox_selected_factory(
-            self.label_listboxes, self.cc_listboxes)
+            self.label_listboxes, self.cc_listboxes, self.cb_label.get)
+        self.cb_label.bind('<<ComboboxSelected>>', update_selected_ccs)
         for lb in self.label_listboxes:
             lb.bind('<<ListboxSelect>>', update_selected_ccs)
         update_selected_labels = self.update_listbox_selected_factory(
-            self.cc_listboxes, self.label_listboxes)
+            self.cc_listboxes, self.label_listboxes, self.cb_ccs.get)
+        self.cb_ccs.bind('<<ComboboxSelected>>', update_selected_labels)
         for lb in self.cc_listboxes:
             lb.bind('<<ListboxSelect>>', update_selected_labels)
 
         # Toolbar frame
         frame_tb = tk.Frame(self)
-        frame_tb.grid(column=1, row=1, sticky=FILL)
+        frame_tb.grid(column=1, row=2, sticky=FILL)
         # Url to cc logic
         url = 'https://newgrf-specs.tt-wiki.net/wiki/Action0/Cargos#CargoClasses_.2816.29'
         cc_url = self.hyperlink(frame_tb, text=url, url=url)
@@ -319,17 +342,56 @@ class App(tk.Frame):
         sort(cc_boxes, self.cargos.classes)
 
     def update_listbox_selected_factory(
-            self, clicked_listboxes, target_listboxes):
+            self, clicked_listboxes, target_listboxes, selection_func):
+
         def update(event):
+            selection_mode = selection_func()
             for tlb in target_listboxes:
                 tlb.selection_clear(0, tk.END)
-            for selection in self.get_selected_elements(*clicked_listboxes):
-                # This is labels for classes, and vice versa
-                for elem in selection:
-                    for tlb in target_listboxes:
-                        for i in range(0, tlb.size()):
-                            if self.get_element(i, tlb) == elem:
-                                tlb.selection_set(i)
+            seen_classes = set()
+
+            def any_selector():
+                for sel in self.get_selected_elements(*clicked_listboxes):
+                    # This is labels for classes, and vice versa
+                    seen_classes.update(sel)
+                for tlb in target_listboxes:
+                    for i in range(0, tlb.size()):
+                        if self.get_element(i, tlb) in seen_classes:
+                            tlb.selection_set(i)
+
+            def all_selector():
+                for sel in self.get_selected_elements(*clicked_listboxes):
+                    # This is labels for classes, and vice versa
+                    these_classes = set(sel)
+                    if not seen_classes:
+                        seen_classes.update(these_classes)
+                    elif these_classes.isdisjoint(seen_classes):
+                        return
+                    else:
+                        seen_classes.intersection_update(these_classes)
+                for tlb in target_listboxes:
+                    for i in range(0, tlb.size()):
+                        if self.get_element(i, tlb) in seen_classes:
+                            tlb.selection_set(i)
+
+            def none_selector():
+                for sel in self.get_selected_elements(*clicked_listboxes):
+                    # This is labels for classes, and vice versa
+                    seen_classes.update(sel)
+                for tlb in target_listboxes:
+                    for i in range(0, tlb.size()):
+                        if self.get_element(i, tlb) not in seen_classes:
+                            tlb.selection_set(i)
+
+            selection_modes = {
+                'ANY': any_selector,
+                'ALL': all_selector,
+                'NONE': none_selector
+            }
+
+            selector_func = selection_modes[selection_mode]
+            selector_func()
+
         return update
 
     def update_cc_logic_warnings(self):
