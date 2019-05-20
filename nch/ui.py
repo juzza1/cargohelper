@@ -20,13 +20,13 @@ FILL = tk.N + tk.S + tk.W + tk.E
 
 def save_config(data):
     os.makedirs(os.path.dirname(nch.CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, 'wb') as f:
-        os.dump(data, f)
+    with open(nch.CONFIG_PATH, 'wb') as f:
+        pickle.dump(data, f)
 
 
-def load_config(data):
+def load_config():
     try:
-        with open(CONFIG_PATH, 'b') as f:
+        with open(nch.CONFIG_PATH, 'rb') as f:
             data = pickle.load(f)
     except (EOFError, IOError):
         data = None
@@ -35,15 +35,29 @@ def load_config(data):
 
 class App(tk.Frame):
     def __init__(self, master=None):
-        self.cargos = nch.cargos.Cargos(ignore_unknown_labels=True)
-        self.element_mapping = {}
+        self.init_cargos()
         self.max_cc_lb_height = len(self.cargos.classes)
-
         tk.Frame.__init__(self, master)
         self.grid(sticky=FILL)
         self.top = self.winfo_toplevel()
         self.create_widgets()
         self.fill_unset()
+
+    def clear_cargos(self):
+        self.cargos = nch.cargos.Cargos(ignore_unknown_labels=True)
+
+    def refresh_cargos(self):
+        self.cargos.refresh()
+
+    def init_cargos(self):
+        conf = load_config()
+        if isinstance(conf, nch.cargos.Cargos):
+            self.cargos = conf
+        else:
+            self.clear_cargos()
+
+    def save_cargos(self):
+        save_config(self.cargos)
 
     def busy(self):
         self.top.config(cursor='watch')
@@ -158,8 +172,13 @@ class App(tk.Frame):
         self.top.config(menu=self.menubar)
         self.submenu = tk.Menu(self.menubar, tearoff=False)
         self.menubar.add_cascade(label='File', menu=self.submenu)
+        clear_cmd = self.multi_command_factory([
+            self.busy, self.clear_cargos, self.save_cargos, self.fill_unset,
+            self.notbusy])
+        self.submenu.add_command(label='Clear labels', command=clear_cmd)
         refresh_cmd = self.multi_command_factory([
-            self.busy, self.cargos.refresh, self.fill_unset, self.notbusy])
+            self.busy, self.refresh_cargos, self.save_cargos, self.fill_unset,
+            self.notbusy])
         self.submenu.add_command(label='Refresh labels', command=refresh_cmd)
         self.submenu.add_command(label='Exit', command=self.quit)
 
@@ -320,6 +339,7 @@ class App(tk.Frame):
         for lb in self.all_listboxes:
             lb.delete(0, tk.END)
         # Assumes no label will ever have the same name as a class
+        self.element_mapping = {}
         for label in self.cargos.labels:
             self.lb_label_unset.insert(tk.END, label)
             self.element_mapping[str(label)] = label
