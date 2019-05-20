@@ -17,13 +17,6 @@ import nch.cargos
 FILL = tk.N + tk.S + tk.W + tk.E
 
 
-def resource_path(rel_path):
-    """Get alternate path if built with pyinstaller"""
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, rel_path)
-    return os.path.join(os.path.abspath('.'), rel_path)
-
-
 def save_config(data):
     os.makedirs(os.path.dirname(nch.CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, 'wb') as f:
